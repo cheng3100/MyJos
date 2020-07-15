@@ -1,0 +1,60 @@
+# Exercise 3:
+- At boot.S line 55  
+  `ljmp    $PROT_MODE_CSEG, $protcseg` processor start executing 32bit code, the `CR0_PE_ON` bit set on cr0 reg exactly cause the switch from 16-to-32 bit mode.
+- boot/main.c l60 ` 
+	((void (*)(void)) (ELFHDR->e_entry))();` is the last instruction of bootloader executed,  kern/entry.S l57 `
+	movl	$(RELOC(entry_pgdir)), %eax` is the first instruction of the kernel it just loaded.
+
+- the addr is 0x10000c, 0xc in phy addr.
+
+- There is a varible in elf head named e_phnum which record how mamy program sectors in the elf. And in each program sectors' head there are varibles records the memory offset and size about the sector itself.
+
+# Exercise 4:
+the pointer.c output is :
+
+1: a = 0x7ffd77c8bdc0, b = 0x55598155a2a0, c = 0x7ffd77c8bde7
+2: a[0] = 200, a[1] = 101, a[2] = 102, a[3] = 103
+3: a[0] = 200, a[1] = 300, a[2] = 301, a[3] = 302
+4: a[0] = 200, a[1] = 400, a[2] = 301, a[3] = 302
+5: a[0] = 200, a[1] = 128144, a[2] = 256, a[3] = 302
+6: a = 0x7ffd77c8bdc0, b = 0x7ffd77c8bdc4, c = 0x7ffd77c8bdc1
+
+# Exercise 5:
+the first instrction that will break when change the entry addr of bootload is
+in boot.S line55 
+`ljmp    $PROT_MODE_CSEG, $protcseg`
+because the `protcseg` 's addr will conflict with read code in that addr. 
+The reason it's not break before is because BIOS just load bootload to the
+fixed add `0x7c00` and execution it sequencetly until the first jump instrction happened.
+
+# Exercise 5
+easy, because the bootloader load the kernel elf from 0x100000 when bootloader end. And it has not data before.
+
+# Exercise 7
+The first instruction will fail when the kernel addr mapping is not set is the first jmp instrction in kern/entry.S l68
+
+# Exercise 8
+1. 
+- printf.c provide the api and handle with the varibale argument list
+- console.c handle with the I/O to output to serial console or vga.
+2. when output is overflow screen, this code drop oldest one line and shift all content 
+one line up.Than the new line is showed in the bottom.
+3. 
+- fmt point to the string "x %d, y %x, z %d\n", ap point to the x, or exactly is 12($ebp)
+- 
+4. output is:
+`He110 World`, if x86 change to big-endian, i need to be 0x726c6400 instead, 57616 no need to change.
+
+5. it will print the value in caller function's lowest stack addr.
+
+6. it should be like:
+`cprintf(x, y, "y=%x, x=%x")`
+
+
+# Exercise 9 
+1. kernel init stack at kern/entry.S:77, stack top is on the begin of .data, whichis 0xf0110000, it is reserve by link script. the stack pointer initialized point to the high end of the "reserved area".
+
+# Exercise 10
+There are 5  32-bit words be pushed on the stack each recursive nesting level of test_backtrace, they are x(input value), eip(the next instruction when call come back), ebp, esp, ebx.
+
+
