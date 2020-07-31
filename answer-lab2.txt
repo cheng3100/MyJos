@@ -1,0 +1,20 @@
+> Q:Assuming that the following JOS kernel code is correct, what type should variable x have, uintptr_t or physaddr_t?
+
+>	mystery_t x;
+	char* value = return_a_pointer();
+	*value = 10;
+	x = (mystery_t) value;
+
+A: x is uintptr_t
+
+> Q: 
+
+3. user program can not access kernel's memory because of the low 12 bit flag of each page entry which maped on kernel address is set only super user can read or write. if a user program try to access there address will casuse a hardware fault.
+
+4. It is equal to address space size minus page table size. It is 2^32 - 2^22 - 2^12.
+5. it is about 1/1000 of whole space size if page size is set to 4k. Bigger page size will decrease the overhead.
+
+6. the point is on kern/entry.S:68 "jmp *%eax", The entrypgdir page table map 2 addr space make this possible.It is need for leave virtual space room for user program map.
+
+    
+
