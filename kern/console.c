@@ -192,6 +192,8 @@ cga_putc(int c)
 	}
 
 	// What is the purpose of this?
+    // when output over one screen than this code drop one oldest row of buf and  shift 
+    // one line up.
 	if (crt_pos >= CRT_SIZE) {
 		int i;
 
