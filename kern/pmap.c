@@ -162,6 +162,9 @@ mem_init(void)
 	//////////////////////////////////////////////////////////////////////
 	// Make 'envs' point to an array of size 'NENV' of 'struct Env'.
 	// LAB 3: Your code here.
+	int env_size = NENV * sizeof(struct Env);
+	envs = (struct Env *)boot_alloc(env_size);
+	memset(envs, 0, env_size);
 
 	//////////////////////////////////////////////////////////////////////
 	// Now that we've allocated the initial kernel data structures, we set
@@ -186,9 +189,7 @@ mem_init(void)
 	//      (ie. perm = PTE_U | PTE_P)
 	//    - pages itself -- kernel RW, user NONE
 	// Your code goes here:
-
-    boot_map_region(kern_pgdir, UPAGES, page_size, PADDR(pages), PTE_U | PTE_P);
-    cprintf("ok");
+    boot_map_region(kern_pgdir, UPAGES, page_size, PADDR(pages), PTE_U);
 
 	//////////////////////////////////////////////////////////////////////
 	// Map the 'envs' array read-only by the user at linear address UENVS
@@ -197,6 +198,7 @@ mem_init(void)
 	//    - the new image at UENVS  -- kernel R, user R
 	//    - envs itself -- kernel RW, user NONE
 	// LAB 3: Your code here.
+	boot_map_region(kern_pgdir, UENVS, env_size, PADDR(envs), PTE_U);
 
 	//////////////////////////////////////////////////////////////////////
 	// Use the physical memory that 'bootstack' refers to as the kernel
@@ -209,7 +211,7 @@ mem_init(void)
 	//       overwrite memory.  Known as a "guard page".
 	//     Permissions: kernel RW, user NONE
 	// Your code goes here:
-    boot_map_region(kern_pgdir, KSTACKTOP - KSTKSIZE, KSTKSIZE, PADDR(bootstack), PTE_W|PTE_P);
+    boot_map_region(kern_pgdir, KSTACKTOP - KSTKSIZE, KSTKSIZE, PADDR(bootstack), PTE_W);
 
 	//////////////////////////////////////////////////////////////////////
 	// Map all of physical memory at KERNBASE.
@@ -220,7 +222,6 @@ mem_init(void)
 	// Permissions: kernel RW, user NONE
 	// Your code goes here:
 
-    cprintf("ok");
     boot_map_region(kern_pgdir, KERNBASE, -KERNBASE, 0, PTE_W);
 	// Check that the initial page directory has been set up correctly.
 	check_kern_pgdir();
@@ -406,7 +407,10 @@ pgdir_walk(pde_t *pgdir, const void *va, int create)
         if (!pInfo)
             return NULL;
         pInfo->pp_ref++;
-        pt = (pte_t *)(page2pa(pInfo) | PTE_W | PTE_P);
+		// not set privilege check in page dirctory
+		// because the privilege check in page entry is enough
+		// and this can decrease the complexity.
+        pt = (pte_t *)(page2pa(pInfo) | PTE_W | PTE_U | PTE_P);
         pgdir[PDX(va)] = (uint32_t)pt;
     }
     pt = (pte_t *)PTE_ADDR(pt);
@@ -430,7 +434,7 @@ boot_map_region(pde_t *pgdir, uintptr_t va, size_t size, physaddr_t pa, int perm
     int pn = ROUNDUP(size, PGSIZE) / PGSIZE;
     for (int i = 0; i < pn; i++, pa += PGSIZE, va += PGSIZE) {
         pte_t *pte = pgdir_walk(pgdir, (void *)va, 1);
-        if (!pte)        
+        if (!pte)
             panic("out of memory\n");
         *pte = pa | perm | PTE_P;
         /** page_insert(pgdir, pa2page(pa + i * PGSIZE), (void *)(va + i * PGSIZE), perm | PTE_P); */
@@ -469,11 +473,6 @@ page_insert(pde_t *pgdir, struct PageInfo *pp, void *va, int perm)
     pte_t *pte = pgdir_walk(pgdir, va, true);
     if (pte == NULL)
         return -E_NO_MEM;
-    /** if ((*pte & PTE_P) && (pa2page(*pte) == pp)) { */
-    /**     pgdir[PDX(va)] = PTE_ADDR(pgdir[PDX(va)]) | perm | PTE_P; */
-    /**     *pte = PTE_ADDR(*pte) | perm | PTE_P; */
-    /**     return 0;  */
-    /** } */
 
     if (*pte == 0) {
         pp->pp_ref++;
@@ -486,7 +485,7 @@ page_insert(pde_t *pgdir, struct PageInfo *pp, void *va, int perm)
     }
 
     *pte = page2pa(pp) | perm | PTE_P;
-    pgdir[PDX(va)] = PTE_ADDR(pgdir[PDX(va)]) | perm | PTE_P;
+    /** pgdir[PDX(va)] = PTE_ADDR(pgdir[PDX(va)]) | perm | PTE_P; */
 	return 0;
 }
 
@@ -583,7 +582,21 @@ int
 user_mem_check(struct Env *env, const void *va, size_t len, int perm)
 {
 	// LAB 3: Your code here.
+	pde_t *pgdir = env->env_pgdir;
+	if (!pgdir)
+		return -1;
 
+	uintptr_t end = ROUNDUP((uintptr_t)va + len, PGSIZE);
+	uintptr_t pva = ROUNDDOWN((uintptr_t)va, PGSIZE);
+	
+	for (uintptr_t i = pva; i < end; i += PGSIZE) {
+		pte_t *e = pgdir_walk(pgdir, (void *)i, 0);
+		if (!e)
+			return -1;
+
+		if (!(perm & *e))
+			return -1;
+	}
 	return 0;
 }
 
