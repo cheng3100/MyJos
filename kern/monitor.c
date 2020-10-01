@@ -65,7 +65,14 @@ mon_backtrace(int argc, char **argv, struct Trapframe *tf)
     uint32_t *ebp = (uint32_t *)(uintptr_t)read_ebp();
     uint32_t eip = 0;
     struct Eipdebuginfo info;
-    while (ebp) {
+
+	// TODO find that the eip_line is always the end of function, should be a bug in debuginfo_eip
+	asm ("movl $., %0\n" : "=r"(eip));
+	debuginfo_eip(eip, &info);
+	cprintf("\t%s:%d: %.*s+%d\n", info.eip_file, info.eip_line, \
+								 info.eip_fn_namelen, info.eip_fn_name, eip-info.eip_fn_addr);
+
+    while (ebp && *ebp) {
         eip = *(ebp + 1);
         cprintf("  ebp %x  eip %x", (uintptr_t)ebp, eip);
         cprintf("  args %-08x %-08x %08x %-08x %-08x\n", *(ebp+2), *(ebp+3), *(ebp+4), \
@@ -75,6 +82,11 @@ mon_backtrace(int argc, char **argv, struct Trapframe *tf)
                                      info.eip_fn_namelen, info.eip_fn_name, eip-info.eip_fn_addr);
         ebp = (uint32_t*)*ebp;
     }
+
+	eip = *(ebp + 1);
+	debuginfo_eip(eip, &info);
+	cprintf("\t%s:%d: %.*s+%d\n", info.eip_file, info.eip_line, \
+								 info.eip_fn_namelen, info.eip_fn_name, eip-info.eip_fn_addr);
 	return 0;
 }
 

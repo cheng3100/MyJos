@@ -30,6 +30,7 @@ _start:
 	pushl $0
 
 args_exist:
+	movl	$0x0,%ebp			# nuke frame pointer
 	call libmain
 1:	jmp 1b
 

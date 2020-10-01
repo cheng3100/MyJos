@@ -1,0 +1,21 @@
+> Q.1 What is th purpose of having an individual handler for each exception?
+
+> A.1 Because kernel in x96 can't distinguish the origin of exception, which has no input parameter or flag register. If X86 provide the exception number by 
+register or push to stack,kernel can delivered all exception in one handler.
+
+> Q.2 Did you have to do anything to make the user/softint program behave correctly? The grade script expects it to produce a general protection fault (trap 13), but softint's code says int $14. Why should this produce interrupt vector 13? What happens if the kernel actually allows softint's int $14 instruction to invoke the kernel's page fault handler (which is interrupt vector 14)?
+
+> A.2 No,we need not to do anything about the softint. It's because vector 14's DPL is 0 but the RPL is 3 when we invoke the instruction `int 13`  so it general exception 13 not 14. In fact only system call trap can be called from user space.
+
+> Q.3 The break point test case will either generate a break point exception or a general protection fault depending on how you initialized the break point entry in the IDT (i.e., your call to SETGATE from trap_init). Why? How do you need to set it up in order to get the breakpoint exception to work as specified above and what incorrect setup would cause it to trigger a general protection fault?
+
+> A.3 The DPL in the IDT decide the behavior of trigger a soft int 3. If the DPL of break point entry (3) in IDT is set to 3 than it will dispatch to exception handler 3.
+else if DPL is set to 0 than it will trigger a general protection fault(13).
+
+> Q.4. What do you think is the point of these mechanisms, particularly in light of what the user/softint test program does?
+
+> A.3. The purpose may be pretend the user from executive bad code with ring 0 privilege.
+
+
+
+

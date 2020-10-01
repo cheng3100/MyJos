@@ -24,7 +24,7 @@ static struct Env *env_free_list;	// Free environment list
 // Set up global descriptor table (GDT) with separate segments for
 // kernel mode and user mode.  Segments serve many purposes on the x86.
 // We don't use any of their memory-mapping capabilities, but we need
-// them to switch privilege levels. 
+// them to switch privilege levels.
 //
 // The kernel and user segments are identical except for the DPL.
 // To load the SS register, the CPL must equal the DPL.  Thus,
@@ -283,7 +283,10 @@ region_alloc(struct Env *e, void *va, size_t len)
 		struct PageInfo * pp = page_alloc(0);
 		if (!pp)
 			panic("out of memory!\n");
+		pp->pp_ref++;
 		page_insert(e->env_pgdir, pp, (void *)i, PTE_U | PTE_W);
+		// kernel itself need r/w to the text section of user space
+		// or it can't load user's image code to there.
 		page_insert(kern_pgdir, pp, (void *)i, PTE_U | PTE_W);
 	}
 
@@ -347,7 +350,7 @@ load_icode(struct Env *e, uint8_t *binary)
 	struct Elf *eh = (struct Elf *)binary;
 	struct Proghdr *ph = (struct Proghdr *)(binary + eh->e_phoff);
 	int n = eh->e_phnum;
-	
+
 	for (int i = 0; i < n; i++) {
 		if (ph->p_type != ELF_PROG_LOAD)
 			continue;

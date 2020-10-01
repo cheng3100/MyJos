@@ -106,7 +106,8 @@ boot_alloc(uint32_t n)
     if (0 == n) {
         return (void *)((uint32_t)nextfree);
     }
-    n = n/PGSIZE + (n%PGSIZE)?1:0;
+
+    n = n/PGSIZE + ((n%PGSIZE)?1:0);
     char *prefree = nextfree;
     nextfree = (char *)((uintptr_t)nextfree + n * PGSIZE);
 
@@ -306,9 +307,10 @@ page_init(void)
     page_free_list = page_free_list->pp_link;
     down = &pages[ROUNDUP(IOPHYSMEM, PGSIZE)/PGSIZE-1];
 
-    uintptr_t upAddr = (uintptr_t)(PADDR((pages + npages)));
+	uintptr_t upAddr = (uintptr_t)(PADDR(boot_alloc(0)));
     up = &pages[ROUNDUP(upAddr, PGSIZE)/PGSIZE];
     down->pp_link = up;
+
     return;
 }
 
@@ -330,6 +332,7 @@ page_alloc(int alloc_flags)
 	// Fill this function in
     if (page_free_list == NULL)
         return NULL;
+
     struct PageInfo *p = page_free_list;
     page_free_list = page_free_list->pp_link;
     p->pp_link = NULL;
@@ -356,6 +359,7 @@ page_free(struct PageInfo *pp)
 
     pp->pp_link = page_free_list;
     page_free_list = pp;
+
     return;
 }
 
@@ -560,6 +564,8 @@ tlb_invalidate(pde_t *pgdir, void *va)
 
 static uintptr_t user_mem_check_addr;
 
+#define ERR_ADD(pva, va) ((pva) < (va) ? (va) : (pva))
+
 //
 // Check that an environment is allowed to access the range of memory
 // [va, va+len) with permissions 'perm | PTE_P'.
@@ -591,11 +597,15 @@ user_mem_check(struct Env *env, const void *va, size_t len, int perm)
 	
 	for (uintptr_t i = pva; i < end; i += PGSIZE) {
 		pte_t *e = pgdir_walk(pgdir, (void *)i, 0);
-		if (!e)
+		if (!e) {
+			user_mem_check_addr = ERR_ADD(i, (uintptr_t)va);
 			return -1;
+		}
 
-		if (!(perm & *e))
+		if (!(perm & *e)) {
+			user_mem_check_addr = ERR_ADD(i, (uintptr_t)va);
 			return -1;
+		}
 	}
 	return 0;
 }
@@ -779,7 +789,6 @@ check_kern_pgdir(void)
 
 	// check pages array
 	n = ROUNDUP(npages*sizeof(struct PageInfo), PGSIZE);
-    cprintf("n2:%d\n", n);
 	for (i = 0; i < n; i += PGSIZE)
 		assert(check_va2pa(pgdir, UPAGES + i) == PADDR(pages) + i);
 
