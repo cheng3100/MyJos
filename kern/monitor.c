@@ -11,6 +11,7 @@
 #include <kern/monitor.h>
 #include <kern/kdebug.h>
 #include <kern/trap.h>
+#include <kern/env.h>
 
 #define CMDBUF_SIZE	80	// enough for one VGA text line
 
@@ -26,7 +27,36 @@ static struct Command commands[] = {
 	{ "help", "Display this list of commands", mon_help },
 	{ "kerninfo", "Display information about the kernel", mon_kerninfo },
 	{ "backtrace", "Display the backtrace information from here", mon_backtrace },
+	{ "n", "Single step next instruction", mon_dbg },
+	{ "c", "Contnue next instruction", mon_dbg },
+	{ "", "Contnue next instruction", mon_dbg },
 };
+
+int mon_dbg(int argc, char **argv, struct Trapframe *tf)
+{
+	
+	uintptr_t eip;
+    struct Eipdebuginfo info;
+
+	cprintf("get\n");
+	eip = tf->tf_eip;
+	debuginfo_eip(eip, &info);
+	cprintf(">>> current instrcution: %s:%d, %x\n", info.eip_file, info.eip_line, eip);
+
+	if (!strcmp(argv[0], "n") || !strcmp(argv[0], "")) {
+		// set trap bit on flags
+		// it cann't be modified directly
+		/** uintptr_t *flag = &(tf->tf_eflags); */
+		tf->tf_eflags |= 0x100;		// trap bit is the 9th bit
+		env_pop_tf(tf);
+			
+	} else if (!strcmp(argv[0], "c")) {
+		tf->tf_eflags &= ~0x100;		// clear trap bit, resume normal mode
+		env_pop_tf(tf);
+	}
+	return 0;
+		
+}
 
 /***** Implementations of basic kernel monitor commands *****/
 
@@ -141,11 +171,11 @@ monitor(struct Trapframe *tf)
 {
 	char *buf;
 
-	cprintf("Welcome to the JOS kernel monitor!\n");
-	cprintf("Type 'help' for a list of commands.\n");
+	/** cprintf("Welcome to the JOS kernel monitor!\n"); */
+	/** cprintf("Type 'help' for a list of commands.\n"); */
 
-	if (tf != NULL)
-		print_trapframe(tf);
+	/** if (tf != NULL) */
+	/**     print_trapframe(tf); */
 
 	while (1) {
 		buf = readline("K> ");

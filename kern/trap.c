@@ -159,6 +159,7 @@ trap_dispatch(struct Trapframe *tf)
 						tf->tf_regs.reg_esi);
 			return;
 		case T_PGFLT : page_fault_handler(tf); return;
+		case T_DEBUG : 
 		case T_BRKPT : monitor(tf); return;
 		default : break;
 	}
