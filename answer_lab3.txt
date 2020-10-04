@@ -1,3 +1,7 @@
+Questions;
+=========
+
+
 > Q.1 What is th purpose of having an individual handler for each exception?
 
 > A.1 Because kernel in x96 can't distinguish the origin of exception, which has no input parameter or flag register. If X86 provide the exception number by 
@@ -18,4 +22,9 @@ else if DPL is set to 0 than it will trigger a general protection fault(13).
 
 
 
+Challenge:
+=========
 
+> C1: implements single step
+
+> A: done. set the trap bit of flags([8:8]) can be used to enter single step mode. break point need to do some things else like modify the first byte of next ip as `cc`, which is the instruction `int 3`, and set into single step mode, then restore it in the handler. It is done in the `lab3_dev` branch.
