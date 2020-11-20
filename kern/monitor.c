@@ -34,7 +34,7 @@ static struct Command commands[] = {
 
 int mon_dbg(int argc, char **argv, struct Trapframe *tf)
 {
-	
+
 	uintptr_t eip;
     struct Eipdebuginfo info;
 
@@ -49,13 +49,13 @@ int mon_dbg(int argc, char **argv, struct Trapframe *tf)
 		/** uintptr_t *flag = &(tf->tf_eflags); */
 		tf->tf_eflags |= 0x100;		// trap bit is the 9th bit
 		env_pop_tf(tf);
-			
+
 	} else if (!strcmp(argv[0], "c")) {
 		tf->tf_eflags &= ~0x100;		// clear trap bit, resume normal mode
 		env_pop_tf(tf);
 	}
 	return 0;
-		
+
 }
 
 /***** Implementations of basic kernel monitor commands *****/
